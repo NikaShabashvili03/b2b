@@ -1,13 +1,20 @@
 const jwt = require('jsonwebtoken');
 
-module.exports = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1]; // Get token from headers
-    if (!token) return res.status(403).json({ message: 'No token provided' });
+const auth = (req, res, next) => {
+    const token = req.headers['authorization']?.split(' ')[1]; // Extract token from headers
 
-    jwt.verify(token, process.env.ADMIN_JWT_SECRET, (err, decoded) => {
-        if (err) return res.status(500).json({ message: 'Failed to authenticate token' });
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided' });
+    }
 
-        req.adminId = decoded._id; // Set adminId to request object
-        next();
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ message: 'Invalid token' });
+        }
+
+        req.user = decoded; // Set user from token payload
+        next(); // Call next middleware
     });
 };
+
+module.exports = auth;
