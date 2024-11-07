@@ -1,29 +1,16 @@
 const mongoose = require('mongoose');
+const Category = require('./Category'); // Import Category model
 
 const productSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
+    name: { type: String, required: true },
+    prod_id: { type: String, required: true },
+    price: { type: Number, required: true },
+    description: { type: String },
+    images: [String], // Assuming images are an array of strings
+    category: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',  // Reference to Category model
     },
-    prod_id: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    price: {
-        type: Number,
-        required: true,
-    },
-    description: {
-        type: String,
-        required: true,
-    },
-    images: {
-        type: [String],
-        required: true,
-    },
-}, {
-    timestamps: true,
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);

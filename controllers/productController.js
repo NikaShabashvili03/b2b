@@ -1,15 +1,33 @@
 const Product = require('../models/Product');
+const Category = require('../models/Category');  // Import the Category model
 const validateObjectId = require('../utils/validateObjectId');
-var ObjectId = require('mongoose').Types.ObjectId; 
+var ObjectId = require('mongoose').Types.ObjectId;
 
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_id, price, description, images } = req.body;
+        const { name, prod_id, price, description, images, categoryId } = req.body;
 
-        const product = new Product({ name, prod_id, price, description, images });
+        // Validate categoryId
+        if (!ObjectId.isValid(categoryId)) {
+            return res.status(400).json({ message: 'Invalid category ID' });
+        }
+
+        const category = await Category.findById(categoryId);
+        if (!category) {
+            return res.status(404).json({ message: 'Category not found' });
+        }
+
+        const product = new Product({
+            name,
+            prod_id,
+            price,
+            description,
+            images,
+            category: category._id,  // Assign category to product
+        });
+
         const savedProduct = await product.save();
-        
         res.status(201).json({ message: 'Product created successfully', product: savedProduct });
     } catch (error) {
         console.error(error);
@@ -17,47 +35,17 @@ exports.createProduct = async (req, res) => {
     }
 };
 
-// Get All Products function
-exports.getAllProducts = async (req, res) => {
-    const { subcategoryId } = req.params;
-
-    if (!validateObjectId(subcategoryId)) {
-        return res.status(400).json({ message: 'Invalid SubCategory ID' });
-    }
-
+// Get Products function by Category
+exports.getProductsByCategory = async (req, res) => {
     try {
-        const products = await Product.find({ "subcategoryId":new ObjectId(subcategoryId)})
-        console.log(products)
+        const { categoryId } = req.query;
+
+        if (!ObjectId.isValid(categoryId)) {
+            return res.status(400).json({ message: 'Invalid category ID' });
+        }
+
+        const products = await Product.find({ category: categoryId });
         res.status(200).json(products);
-    } catch (error) {
-        res.status(500).json({ message: 'Error retrieving subcategories', error });
-    }
-};
-
-// Get Single Product function
-exports.getProductById = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const product = await Product.findById(id);
-        if (!product) {
-            return res.status(404).json({ message: 'Product not found' });
-        }
-        res.json(product);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Something went wrong' });
-    }
-};
-
-// Update Product function
-exports.updateProduct = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const updatedProduct = await Product.findByIdAndUpdate(id, req.body, { new: true });
-        if (!updatedProduct) {
-            return res.status(404).json({ message: 'Product not found' });
-        }
-        res.json(updatedProduct);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong' });
