@@ -16,7 +16,7 @@ exports.createCategory = async (req, res) => {
 // Get all categories
 exports.getAllCategories = async (req, res) => {
     try {
-        const categories = await Category.find().populate('subcategories');
+        const categories = await Category.find().populate('subcategory');
         res.status(200).json(categories);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving categories', error });
