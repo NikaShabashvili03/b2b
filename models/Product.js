@@ -7,7 +7,7 @@ const productSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     description: { type: String },
     images: [String], // Assuming images are an array of strings
-    category: {
+    Category: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Category',  // Reference to Category model
     },
