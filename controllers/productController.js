@@ -34,6 +34,18 @@ exports.createProduct = async (req, res) => {
         res.status(500).json({ message: 'Something went wrong' });
     }
 };
+// Get all Products function
+exports.getAllProducts = async (req, res) => {
+    try {
+        // Fetch all products from the database
+        const products = await Product.find().populate('Category'); // Populating category field to get category details
+        res.status(200).json(products); // Return all products with category details
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Something went wrong while fetching products' });
+    }
+};
+
 
 // Get Products function by Category
 exports.getProductsByCategory = async (req, res) => {

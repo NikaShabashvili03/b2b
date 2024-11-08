@@ -6,7 +6,10 @@ const router = express.Router();
 router.post('/', productController.createProduct);
 
 // Route to get products by category
-router.get('/', productController.getProductsByCategory);
+router.get('/category', productController.getProductsByCategory);
+
+// Get all products
+router.get('/', productController.getAllProducts); // New route to get all products
 
 // Route to delete a product by id
 router.delete('/:id', productController.deleteProduct);

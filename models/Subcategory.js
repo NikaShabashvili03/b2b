@@ -1,5 +1,16 @@
 const mongoose = require('mongoose');
 
+const attributeSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    value: {
+        type: String,
+        required: true,
+    }
+});
+
 const subcategorySchema = new mongoose.Schema({
     name: {
         type: String,
@@ -14,7 +25,10 @@ const subcategorySchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
-    // Add other fields as needed
+    description: { type: String },
+
+attributes: [attributeSchema], 
+
 });
 
 const Subcategory = mongoose.model('Subcategory', subcategorySchema);

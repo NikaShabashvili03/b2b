@@ -3,9 +3,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // User Registration function
+
 exports.registerUser = async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { company, position, identify, name, lastname, phone, email, password } = req.body;
 
         const existUser = await User.findOne({ email });
         if (existUser) {
@@ -13,11 +14,20 @@ exports.registerUser = async (req, res) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash(password, salt);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
-        const user = new User({ username, email, hashedPassword: hash });
+        const user = new User({
+            company,
+            position,
+            identify,
+            name,
+            lastname,
+            phone,
+            email,
+            hashedPassword
+        });
+
         const savedUser = await user.save();
-
         res.status(201).json({ message: 'User created successfully', user: savedUser });
     } catch (error) {
         console.error(error);
