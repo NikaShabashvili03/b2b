@@ -14,7 +14,7 @@ router.get('/', auth.checkUser, cartController.viewCart);
 // Delete specific product from cart
 router.delete('/remove/:productId', auth.checkUser, cartController.deleteProductFromCart);
 
-router.post('/checkout', auth.checkUser, cartController.checkout);
+router.post('/cartSale',auth.checkUser, cartController.cartSale); 
 
 router.get('/history', auth.checkUser, cartController.viewSaleHistory);
 module.exports = router;

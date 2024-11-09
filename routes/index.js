@@ -7,14 +7,12 @@ const categoryRoutes = require('./categoryRoutes');
 const subcategoryRoutes = require('./subcategoryRoutes');
 const cartRoutes = require('./cartRoutes');
 
-
 router.use('/admin', adminRoutes);
-router.use('/products', productRoutes);
+router.use('/product', productRoutes);
 router.use('/user', userRoutes);
 router.use('/category', categoryRoutes);
 router.use('/subcategory', subcategoryRoutes);
 router.use('/cart', cartRoutes);
-
 
 
 

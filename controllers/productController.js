@@ -6,7 +6,7 @@ var ObjectId = require('mongoose').Types.ObjectId;
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_id, price, description, images, categoryId } = req.body;
+        const { name, prod_ID, price, description, images, categoryId } = req.body;
 
         // Validate categoryId
         if (!ObjectId.isValid(categoryId)) {
@@ -20,7 +20,7 @@ exports.createProduct = async (req, res) => {
 
         const product = new Product({
             name,
-            prod_id,
+            prod_ID,
             price,
             description,
             images,
@@ -76,5 +76,38 @@ exports.deleteProduct = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong' });
+    }
+};
+
+
+exports.updateProduct = async (req, res) => {
+    const { productId, name, price, description, images, categoryId, quantity } = req.body;
+
+    try {
+        // Find product by productId
+        const product = await Product.findOne({ prod_ID: productId }); // Use prod_ID for searching
+
+        if (!product) {
+            return res.status(404).json({ message: "Product not found" });
+        }
+
+        // Update product fields
+        product.name = name || product.name;
+        product.price = price || product.price;
+        product.description = description || product.description;
+        product.images = images || product.images;
+        product.Category = categoryId || product.Category;
+        product.quantity = quantity || product.quantity;
+
+        // Save the updated product
+        await product.save();
+
+        return res.json({
+            message: "Product updated successfully",
+            product
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
     }
 };
