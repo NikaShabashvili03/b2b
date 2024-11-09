@@ -2,29 +2,81 @@
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Sale = require("../models/Sale");
+const Cart = require('../models/Cart'); // Import Cart model
 
-// Add a product to the cart
 exports.addToCart = async (req, res) => {
-    const userId = req.userId; // Assuming authentication middleware sets req.user
-    const { productId } = req.body;
+    const { productId, quantity } = req.body;
+
+    // Default quantity to 1 if not provided
+    const cartQuantity = quantity || 1;
 
     try {
+        // Fetch product from the database to check the available quantity
         const product = await Product.findById(productId);
-        if (!product) return res.status(404).json({ message: 'Product not found' });
 
-        const user = await User.findById(userId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
 
-        // Add the product to the user's cart
-        user.cart.push(productId);
-        await user.save();
+        // Check if the requested quantity is more than available stock
+        const availableQuantity = product.quantity; // Assuming 'quantity' field in product
+        if (cartQuantity > availableQuantity) {
+            return res.status(400).json({
+                message: `Only ${availableQuantity} items are available. ${availableQuantity} items have been added to your cart.`
+            });
+        }
 
-        res.status(200).json({ message: 'Product added to cart', cart: user.cart });
+        // Fetch the user's cart
+        let userCart = await Cart.findOne({ userId: req.userId });
+
+        if (!userCart) {
+            // Create a new cart if it doesn't exist
+            userCart = new Cart({
+                userId: req.userId,
+                cart: [{ productId, quantity: cartQuantity }]
+            });
+            await userCart.save();
+            return res.status(201).json({
+                message: 'Product added to cart successfully.',
+                cart: userCart
+            });
+        }
+
+        // Check if the product is already in the cart
+        const existingItem = userCart.cart.find(item => item.productId.toString() === productId);
+
+        if (existingItem) {
+            // If product already exists in the cart, check the quantity
+            if (existingItem.quantity + cartQuantity > availableQuantity) {
+                return res.status(400).json({
+                    message: `You can only add ${availableQuantity - existingItem.quantity} more of this item.`
+                });
+            }
+            // Increment the existing product quantity
+            existingItem.quantity += cartQuantity;
+        } else {
+            // If product doesn't exist, add it to the cart
+            userCart.cart.push({ productId, quantity: cartQuantity });
+        }
+
+        // Save the updated cart
+        await userCart.save();
+
+        return res.status(200).json({
+            message: `Product added to cart successfully.`,
+            cart: userCart
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error adding product to cart', error });
+        console.error(error);
+        return res.status(500).json({ message: 'Error adding product to cart' });
     }
-    
 };
+
+
+
+
+
+
 
 // View user's cart
 exports.viewCart = async (req, res) => {
@@ -58,7 +110,7 @@ exports.deleteProductFromCart = async (req, res) => {
         res.status(500).json({ message: 'Error removing product from cart', error });
     }
 };
-const mongoose = require('mongoose');  // Ensure mongoose is required
+
 exports.checkout = async (req, res) => {
     const userId = req.userId; // Ensure you're getting the userId correctly
 
