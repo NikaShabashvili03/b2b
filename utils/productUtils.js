@@ -9,4 +9,4 @@ async function getProductQuantity(productId) {
     return product.quantity;  // Return the quantity of the product
 }
 
-module.exports = { getProductQuantity };  // Ensure it's exported
+module.exports = { getProductQuantity };  

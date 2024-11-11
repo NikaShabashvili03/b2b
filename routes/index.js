@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express.Router(); // Initialize router here
+const router = express.Router(); 
 const adminRoutes = require('./adminRoutes');
 const productRoutes = require('./productRoutes');
 const userRoutes = require('./userRoutes');

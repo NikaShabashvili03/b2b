@@ -9,7 +9,6 @@ exports.addToCart = async (req, res) => {
     try {
         const { productId, quantity } = req.body;  // Destructure quantity from the request body
 
-        // Ensure that productId is passed and is valid
         if (!productId) {
             return res.status(400).json({ message: 'Product ID is required' });
         }
@@ -69,24 +68,33 @@ exports.viewCart = async (req, res) => {
     const userId = req.userId;
 
     try {
-        // Find the user's cart and populate product details from the 'Product' model
-        const userCart = await Cart.findOne({ userId }).populate('cart.productId');  // Populate the productId field
+        const userCart = await Cart.findOne({ userId }).populate('cart.productId');
 
         if (!userCart) return res.status(404).json({ message: 'Cart not found' });
 
-        // Map through the cart items and construct the response data
-        const cartItems = userCart.cart.map(item => ({
-            productId: item.productId._id,
-            productName: item.productId.name, // Assuming 'name' field exists in Product model
-            productPrice: item.productId.price, // Assuming 'price' field exists in Product model
-            quantity: item.quantity,
-            totalPrice: item.productId.price * item.quantity
-        }));
+        const discountRate = 10; // Example: 10% discount
+        const cartItems = userCart.cart.map(item => {
+            const originalPrice = item.productId.price * item.quantity;
+            const discount = (originalPrice * discountRate) / 100;
+            const discountedPrice = originalPrice - discount;
+
+            return {
+                productId: item.productId._id,
+                productName: item.productId.name,
+                productPrice: item.productId.price,
+                quantity: item.quantity,
+                totalPrice: originalPrice,
+                discount,
+                discountedTotal: discountedPrice
+            };
+        });
+
+        const totalDiscountedAmount = cartItems.reduce((acc, item) => acc + item.discountedTotal, 0);
 
         res.status(200).json({
             message: 'Cart fetched successfully',
             cartItems,
-            totalAmount: cartItems.reduce((acc, item) => acc + item.totalPrice, 0)  // Calculate total amount
+            totalDiscountedAmount
         });
     } catch (error) {
         console.error(error);
@@ -225,6 +233,9 @@ exports.cartSale = async (req, res) => {
         res.status(500).json({ message: 'Error during sale', error: error.message });
     }
 };
+
+
+
 
 exports.viewSaleHistory = async (req, res) => {
     const userId = req.userId;

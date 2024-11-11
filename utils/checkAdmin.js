@@ -5,7 +5,7 @@ exports.checkAdmin = (req, res, next) => {
 
     if (token) {
         try {
-            const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET); // Ensure this matches your secret for admin
+            const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET); 
             req.adminId = decoded._id; // Store the admin ID for use in the controller
             next();
         } catch (err) {

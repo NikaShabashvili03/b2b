@@ -7,7 +7,7 @@ const soldItemSchema = new mongoose.Schema({
         required: true 
     },
     prod_id: { 
-        type: mongoose.Schema.Types.ObjectId,  // Changed to ObjectId to reference Product model
+        type: mongoose.Schema.Types.ObjectId, 
         ref: 'Product', 
         required: true 
     },
@@ -18,6 +18,10 @@ const soldItemSchema = new mongoose.Schema({
     price: {
         type: Number,
         required: true
+    },
+    discount: {  // New field for discount
+        type: Number,
+        default: 0
     },
     totalAmount: {
         type: Number,

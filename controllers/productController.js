@@ -6,7 +6,7 @@ var ObjectId = require('mongoose').Types.ObjectId;
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_ID, price, description, images, categoryId } = req.body;
+        const { name, prod_id, price, description, images, categoryId } = req.body;
 
         // Validate categoryId
         if (!ObjectId.isValid(categoryId)) {
@@ -20,7 +20,7 @@ exports.createProduct = async (req, res) => {
 
         const product = new Product({
             name,
-            prod_ID,
+            prod_id,
             price,
             description,
             images,
@@ -64,6 +64,79 @@ exports.getProductsByCategory = async (req, res) => {
     }
 };
 
+exports.applyDiscount = async (req, res) => {
+    const { productIds, discountPercentage, userId } = req.body;
+
+    try {
+        // Validate that the discount percentage is a number between 0 and 100
+        if (discountPercentage < 0 || discountPercentage > 100) {
+            return res.status(400).json({ message: 'Discount percentage must be between 0 and 100' });
+        }
+
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ message: 'No products provided for discount' });
+        }
+
+        // If userId is provided, validate if the user exists and their role
+        if (userId) {
+            // Validate the userId and check if the user exists
+            if (!ObjectId.isValid(userId)) {
+                return res.status(400).json({ message: `Invalid user ID: ${userId}` });
+            }
+
+            const user = await User.findById(userId);
+
+            if (!user) {
+                return res.status(404).json({ message: `User with ID ${userId} not found` });
+            }
+
+            // Optionally, check if the user has the required role or permission
+            if (user.role !== 'client') {
+                return res.status(403).json({ message: 'Discount can only be applied for clients' });
+            }
+        }
+
+        // Use reduce to process all the product IDs
+        const updatedProducts = await productIds.reduce(async (acc, productId) => {
+            const accumulator = await acc;  // Ensure async processing
+
+            if (!ObjectId.isValid(productId)) {
+                throw new Error(`Invalid product ID: ${productId}`);
+            }
+
+            // Find the product by its ID
+            const product = await Product.findById(productId);
+
+            if (!product) {
+                throw new Error(`Product with ID ${productId} not found`);
+            }
+
+            // Calculate the discount
+            const originalPrice = product.price;
+            const discountAmount = (originalPrice * discountPercentage) / 100;
+            const discountedPrice = originalPrice - discountAmount;
+
+            // Update the product's price with the discounted price
+            product.price = discountedPrice;
+
+            // Save the updated product
+            await product.save();
+
+            // Accumulate the updated product to the result array
+            accumulator.push(product);
+
+            return accumulator;
+        }, Promise.resolve([]));  // Initialize accumulator as an empty array
+
+        res.status(200).json({
+            message: 'Discount applied successfully to the products',
+            updatedProducts
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error applying discount', error: error.message });
+    }
+};
 // Delete Product function
 exports.deleteProduct = async (req, res) => {
     const { id } = req.params;
@@ -85,7 +158,7 @@ exports.updateProduct = async (req, res) => {
 
     try {
         // Find product by productId
-        const product = await Product.findOne({ prod_ID: productId }); // Use prod_ID for searching
+        const product = await Product.findOne({ prod_id: productId }); // Use prod_ID for searching
 
         if (!product) {
             return res.status(404).json({ message: "Product not found" });
