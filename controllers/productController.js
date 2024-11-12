@@ -86,21 +86,24 @@ exports.getProductsById = async (req, res) => {
 // Get Products function by Category
 exports.getProductsByCategory = async (req, res) => {
     try {
-        const { categoryId } = req.query;
+        const { categoryId, subcategoryId } = req.query;
         const { skip = 0, limit = 50, sort = 'asc' } = req.query;
-
+        
         if (!ObjectId.isValid(categoryId)) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        const products = await Product.find({ category: categoryId })
+        const products = await Product.find({ category: categoryId, subcategory: subcategoryId })
             .skip(parseInt(skip) * parseInt(limit))
             .limit(parseInt(limit))
             .sort({ name: sort })
             .populate('category')
             .populate('subcategory');
 
-        res.status(200).json(products);
+        res.status(200).json({
+            products: products,
+            pages: (products.length / limit).toFixed(0)
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while fetching products by category' });
