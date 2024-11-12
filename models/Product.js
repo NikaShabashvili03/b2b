@@ -1,6 +1,5 @@
 // models/Product.js
 const mongoose = require('mongoose');
-const Category = require('./Category'); 
 
 const attributeSchema = new mongoose.Schema({
     name: { 

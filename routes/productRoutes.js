@@ -9,6 +9,9 @@ router.post('/', productController.createProduct);
 // Route to get products by category
 router.get('/category', productController.getProductsByCategory);
 
+router.get('/subcategory', productController.getProductsBysubategory);
+
+
 // Get all products
 router.get('/', productController.getAllProducts); // New route to get all products
 

@@ -31,6 +31,4 @@ attributes: [attributeSchema],
 
 });
 
-const Subcategory = mongoose.model('Subcategory', subcategorySchema);
-
-module.exports = Subcategory;
+module.exports = mongoose.model('Subcategory', subcategorySchema);
