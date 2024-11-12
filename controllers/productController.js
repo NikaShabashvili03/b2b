@@ -51,9 +51,16 @@ exports.createProduct = async (req, res) => {
 // Get all Products function
 exports.getAllProducts = async (req, res) => {
     try {
-        // Fetch all products from the database
-        const products = await Product.find().populate('Category'); // Populating category field to get category details
-        res.status(200).json(products); // Return all products with category details
+        const { skip = 0, limit = 50, sort = 'asc' } = req.query; // Defaults for pagination and sorting
+
+        const products = await Product.find()
+            .skip(parseInt(skip) * parseInt(limit))
+            .limit(parseInt(limit))
+            .sort({ name: sort }) // Sort by product name in ascending or descending order
+            .populate('category')
+            .populate('subcategory');
+
+        res.status(200).json(products);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while fetching products' });
@@ -80,27 +87,44 @@ exports.getProductsById = async (req, res) => {
 exports.getProductsByCategory = async (req, res) => {
     try {
         const { categoryId } = req.query;
+        const { skip = 0, limit = 50, sort = 'asc' } = req.query;
 
         if (!ObjectId.isValid(categoryId)) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        const products = await Product.find({ category: categoryId });
+        const products = await Product.find({ category: categoryId })
+            .skip(parseInt(skip) * parseInt(limit))
+            .limit(parseInt(limit))
+            .sort({ name: sort })
+            .populate('category')
+            .populate('subcategory');
+
         res.status(200).json(products);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Something went wrong' });
+        res.status(500).json({ message: 'Something went wrong while fetching products by category' });
     }
 };
+
+
 exports.getProductsBysubcategory = async (req, res) => {
     try {
-        const { subcategoryId } = req.query;
+        const { subcategoryId } = req.body;
+        const { skip = 0, limit = 50 } = req.query; // Default skip to 0, limit to 50 if not provided
 
+        // Validate subcategoryId
         if (!ObjectId.isValid(subcategoryId)) {
             return res.status(400).json({ message: 'Invalid subcategory ID' });
         }
 
-        const products = await Product.find({ subcategory: subcategoryId });
+        // Fetch products by subcategory with pagination and sorting
+        const products = await Product.find({ subcategory: subcategoryId })
+            .skip(parseInt(skip) * parseInt(limit)) // Skip products for pagination
+            .limit(parseInt(limit)) // Limit the number of products per page
+            .sort({ name: 'asc' }) // Sort by product name in ascending order
+            .populate('subcategory'); // Populate subcategory details if needed
+
         res.status(200).json(products);
     } catch (error) {
         console.error(error);

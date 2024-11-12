@@ -72,7 +72,7 @@ exports.viewCart = async (req, res) => {
 
         if (!userCart) return res.status(404).json({ message: 'Cart not found' });
 
-        const discountRate = 10; // Example: 10% discount
+        const discountRate = 10; 
         const cartItems = userCart.cart.map(item => {
             const originalPrice = item.productId.price * item.quantity;
             const discount = (originalPrice * discountRate) / 100;
@@ -233,9 +233,6 @@ exports.cartSale = async (req, res) => {
         res.status(500).json({ message: 'Error during sale', error: error.message });
     }
 };
-
-
-
 
 exports.viewSaleHistory = async (req, res) => {
     const userId = req.userId;

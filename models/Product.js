@@ -36,6 +36,10 @@ const productSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Subcategory',
     },
+    discount: {  
+        type: Number,
+        default: 0
+    },
     attributes: [attributeSchema],
     quantity: {
         type: Number,
