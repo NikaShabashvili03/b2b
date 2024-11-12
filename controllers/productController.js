@@ -46,6 +46,21 @@ exports.getAllProducts = async (req, res) => {
     }
 };
 
+exports.getProductsById = async (req, res) => {
+    try {
+        const { productId } = req.query;
+
+        if (!ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: 'Invalid category ID' });
+        }
+
+        const product = await Product.findById(productId);
+        res.status(200).json(product);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Something went wrong' });
+    }
+};
 
 // Get Products function by Category
 exports.getProductsByCategory = async (req, res) => {
