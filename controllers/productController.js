@@ -7,7 +7,7 @@ var ObjectId = require('mongoose').Types.ObjectId;
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes} = req.body;
+        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes } = req.body;
 
         // Validate categoryId
         if (!ObjectId.isValid(categoryId)) {
@@ -19,13 +19,14 @@ exports.createProduct = async (req, res) => {
             return res.status(404).json({ message: 'Category not found' });
         }
 
+        // Validate subcategoryId
         if (!ObjectId.isValid(subcategoryId)) {
             return res.status(400).json({ message: 'Invalid subcategory ID' });
         }
 
         const subcategory = await Subcategory.findById(subcategoryId);
         if (!subcategory) {
-            return res.status(404).json({ message: 'subCategory not found' });
+            return res.status(404).json({ message: 'Subcategory not found' });
         }
 
         const product = new Product({
@@ -34,11 +35,10 @@ exports.createProduct = async (req, res) => {
             price,
             description,
             images,
-            category: category._id,  // Assign category to product
-            Subcategory: subcategory._id,
+            category: category._id, 
+            subcategory: subcategory._id, 
             quantity,
             attributes,
-
         });
 
         const savedProduct = await product.save();
@@ -65,7 +65,7 @@ exports.getProductsById = async (req, res) => {
         const { productId } = req.query;
 
         if (!ObjectId.isValid(productId)) {
-            return res.status(400).json({ message: 'Invalid category ID' });
+            return res.status(400).json({ message: 'Invalid product ID' });
         }
 
         const product = await Product.findById(productId);
@@ -92,36 +92,22 @@ exports.getProductsByCategory = async (req, res) => {
         res.status(500).json({ message: 'Something went wrong' });
     }
 };
-
-// exports.getProductsBysubategory = async (req, res) => {
-//     try {
-//         const { subcategoryId } = req.query;
-
-//         if (!ObjectId.isValid(subcategoryId)) {
-//             return res.status(400).json({ message: 'Invalid subcategory ID' });
-//         }
-
-//         const products = await Product.find({ Subcategory: subcategoryId });
-//         res.status(200).json(products);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Something went wrong' });
-//     }
-// };
-exports.getProductsBysubategory = async (req, res) => {
-    const { subcategoryId } = req.params;
-
-    if (!validateObjectId(subcategoryId)) {
-        return res.status(400).json({ message: 'Invalid subCategory ID' });
-    }
-
+exports.getProductsBysubcategory = async (req, res) => {
     try {
-        const product = await product.find({ catesubcategoryIdgoryId }).populate('products');
-        res.status(200).json(product);
+        const { subcategoryId } = req.query;
+
+        if (!ObjectId.isValid(subcategoryId)) {
+            return res.status(400).json({ message: 'Invalid subcategory ID' });
+        }
+
+        const products = await Product.find({ subcategory: subcategoryId });
+        res.status(200).json(products);
     } catch (error) {
-        res.status(500).json({ message: 'Error retrieving products', error });
+        console.error(error);
+        res.status(500).json({ message: 'Something went wrong' });
     }
 };
+
 exports.applyDiscount = async (req, res) => {
     const { productIds, discountPercentage, userId } = req.body;
 

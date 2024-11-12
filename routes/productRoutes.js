@@ -10,7 +10,7 @@ router.get('/one', productController.getProductsById)
 // Route to get products by category
 router.get('/category', productController.getProductsByCategory);
 
-router.get('/subcategory', productController.getProductsBysubategory);
+router.get('/subcategory', productController.getProductsBysubcategory);
 
 
 // Get all products
