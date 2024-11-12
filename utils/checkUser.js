@@ -12,12 +12,12 @@ exports.checkUser = (req, res, next) => {
             
             next();
         } catch (err) {
-            return res.status(403).json({
+            return res.status(401).json({
                 message: 'You dont have access 2'
             })
         }
     }else {
-        return res.status(403).json({
+        return res.status(401).json({
             message: 'You dont have access'
         })
     }

@@ -6,6 +6,7 @@ const auth = require("../utils/checkAdmin")
 // Route to create a product
 router.post('/', productController.createProduct);
 
+router.get('/one', productController.getProductsById)
 // Route to get products by category
 router.get('/category', productController.getProductsByCategory);
 
