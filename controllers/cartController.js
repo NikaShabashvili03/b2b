@@ -80,6 +80,7 @@ exports.viewCart = async (req, res) => {
 
             return {
                 productId: item.productId._id,
+                prod_id: item.productId.prod_id,
                 productName: item.productId.name,
                 productPrice: item.productId.price,
                 quantity: item.quantity,
@@ -89,11 +90,13 @@ exports.viewCart = async (req, res) => {
             };
         });
 
+        const totalAmount = cartItems.reduce((acc, item) => acc + item.totalPrice, 0);
         const totalDiscountedAmount = cartItems.reduce((acc, item) => acc + item.discountedTotal, 0);
 
         res.status(200).json({
             message: 'Cart fetched successfully',
             cartItems,
+            totalAmount,
             totalDiscountedAmount
         });
     } catch (error) {
