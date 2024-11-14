@@ -35,13 +35,7 @@ const userSchema = new mongoose.Schema({
     hashedPassword: {
         type: String,
         required: true,
-    },
-    cart: [
-        {
-            productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-            quantity: { type: Number, required: true }
-        }
-    ]
+    }
 }, {
     timestamps: true,
 });

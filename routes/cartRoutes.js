@@ -12,7 +12,7 @@ router.post('/add', auth.checkUser, cartController.addToCart);
 router.get('/', auth.checkUser, cartController.viewCart);
 
 // Delete specific product from cart
-router.delete('/remove/:productId', auth.checkUser, cartController.deleteProductFromCart);
+router.delete('/remove/:id', auth.checkUser, cartController.deleteProductFromCart);
 
 router.post('/sell',auth.checkUser, cartController.cartSale); 
 
