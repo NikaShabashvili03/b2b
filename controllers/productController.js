@@ -7,7 +7,7 @@ var ObjectId = require('mongoose').Types.ObjectId;
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes, discount } = req.body;
+        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes, } = req.body;
 
         // Validate categoryId
         if (!ObjectId.isValid(categoryId)) {
@@ -19,7 +19,6 @@ exports.createProduct = async (req, res) => {
             return res.status(404).json({ message: 'Category not found' });
         }
 
-        // Validate subcategoryId
         if (!ObjectId.isValid(subcategoryId)) {
             return res.status(400).json({ message: 'Invalid subcategory ID' });
         }
@@ -49,24 +48,41 @@ exports.createProduct = async (req, res) => {
     }
 };
 // Get all Products function
+// Get all Products function with original and discounted prices
 exports.getAllProducts = async (req, res) => {
     try {
-        const { skip = 0, limit = 50, sort = 'asc' } = req.query; // Defaults for pagination and sorting
+        const { skip = 0, limit = 50, sort = 'asc' } = req.query;
 
         const products = await Product.find()
             .skip(parseInt(skip) * parseInt(limit))
             .limit(parseInt(limit))
-            .sort({ name: sort }) // Sort by product name in ascending or descending order
+            .sort({ name: sort })
             .populate('category')
             .populate('subcategory');
 
-        res.status(200).json(products);
+        // Map products to include original and discounted prices
+        const productsWithPrices = products.map(product => {
+            const originalPrice = product.price;
+            const discountAmount = product.discount
+                ? (originalPrice * product.discount) / 100
+                : 0;
+            const discountedPrice = originalPrice - discountAmount;
+
+            return {
+                ...product._doc,         
+                originalPrice,           
+                discountedPrice,         
+            };
+        });
+
+        res.status(200).json(productsWithPrices);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while fetching products' });
     }
 };
 
+// Get Product by ID function with original and discounted prices
 exports.getProductsById = async (req, res) => {
     try {
         const { productId } = req.query;
@@ -76,14 +92,27 @@ exports.getProductsById = async (req, res) => {
         }
 
         const product = await Product.findById(productId);
-        res.status(200).json(product);
+
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        const originalPrice = product.price;
+        const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
+        const discountedPrice = originalPrice - discountAmount;
+
+        res.status(200).json({
+            ...product._doc,
+            originalPrice,
+            discountedPrice,
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong' });
     }
 };
 
-// Get Products function by Category
+// Get Products by Category function with original and discounted prices
 exports.getProductsByCategory = async (req, res) => {
     try {
         const { categoryId, subcategoryId } = req.query;
@@ -100,9 +129,21 @@ exports.getProductsByCategory = async (req, res) => {
             .populate('category')
             .populate('subcategory');
 
+        const productsWithPrices = products.map(product => {
+            const originalPrice = product.price;
+            const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
+            const discountedPrice = originalPrice - discountAmount;
+
+            return {
+                ...product._doc,
+                originalPrice,
+                discountedPrice,
+            };
+        });
+
         res.status(200).json({
-            products: products,
-            pages: (products.length / limit).toFixed(0)
+            product: productsWithPrices,
+            pages: Math.ceil(products.length / limit)
         });
     } catch (error) {
         console.error(error);
@@ -110,25 +151,35 @@ exports.getProductsByCategory = async (req, res) => {
     }
 };
 
-
+// Get Products by Subcategory function with original and discounted prices
 exports.getProductsBysubcategory = async (req, res) => {
     try {
         const { subcategoryId } = req.body;
-        const { skip = 0, limit = 50 } = req.query; // Default skip to 0, limit to 50 if not provided
+        const { skip = 0, limit = 50 } = req.query; 
 
-        // Validate subcategoryId
         if (!ObjectId.isValid(subcategoryId)) {
             return res.status(400).json({ message: 'Invalid subcategory ID' });
         }
 
-        // Fetch products by subcategory with pagination and sorting
         const products = await Product.find({ subcategory: subcategoryId })
-            .skip(parseInt(skip) * parseInt(limit)) // Skip products for pagination
-            .limit(parseInt(limit)) // Limit the number of products per page
-            .sort({ name: 'asc' }) // Sort by product name in ascending order
-            .populate('subcategory'); // Populate subcategory details if needed
+            .skip(parseInt(skip) * parseInt(limit)) 
+            .limit(parseInt(limit)) 
+            .sort({ name: 'asc' }) 
+            .populate('subcategory'); 
 
-        res.status(200).json(products);
+        const productsWithPrices = products.map(product => {
+            const originalPrice = product.price;
+            const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
+            const discountedPrice = originalPrice - discountAmount;
+
+            return {
+                ...product._doc,
+                originalPrice,
+                discountedPrice,
+            };
+        });
+
+        res.status(200).json(productsWithPrices);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong' });
@@ -225,7 +276,7 @@ exports.deleteProduct = async (req, res) => {
 
 
 exports.updateProduct = async (req, res) => {
-    const { productId, name, price, description, images, categoryId, quantity } = req.body;
+    const { productId, name, price, description, images, categoryId, quantity, discount } = req.body;
 
     try {
         // Find product by productId
@@ -242,6 +293,7 @@ exports.updateProduct = async (req, res) => {
         product.images = images || product.images;
         product.Category = categoryId || product.Category;
         product.quantity = quantity || product.quantity;
+        product.discount = discount || product.discount;
 
         // Save the updated product
         await product.save();
