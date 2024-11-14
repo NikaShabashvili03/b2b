@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const Category = require('../models/Category');  // Import the Category model
+const Category = require('../models/Category'); 
 const Subcategory = require('../models/Subcategory');  
 const validateObjectId = require('../utils/validateObjectId');
 var ObjectId = require('mongoose').Types.ObjectId;
@@ -7,7 +7,7 @@ var ObjectId = require('mongoose').Types.ObjectId;
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
-        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes } = req.body;
+        const { name, prod_id, price, description, images, categoryId, quantity, subcategoryId, attributes, discount } = req.body;
 
         // Validate categoryId
         if (!ObjectId.isValid(categoryId)) {
