@@ -28,84 +28,189 @@ const { getProductQuantity } = require('../utils/productUtils');
 //     discount: 199.8
 //   }
 
+// exports.addToCart = async (req, res) => {
+//     try {
+//         const { productId } = req.body;  // Destructure quantity from the request body
+//         const userId = req.userId;
+
+//         const product = await Product.findById(productId);
+        
+//         if(!productId){
+//             return res.status(400).json({ message: 'Product ID is required' });
+//         }
+
+//         const userCart = await Cart.findOne({ userId: userId })
+
+//         const productInCart = userCart.cart.find((item) => item.productId.toString() === productId)
+        
+//         if(productInCart && product.quantity <= productInCart.quantity){
+//             return res.status(400).json({ message: "Quantity is more..."})
+//         }
+
+//         if(productInCart){
+//             const index = userCart.cart.indexOf(productInCart);
+//             userCart.cart[index].quantity++;
+//         }else{
+//             userCart.cart.push({ productId: productId, quantity: 1 })
+//         }
+
+//         const savedCart = await (await userCart.save()).populate("cart.productId")
+
+//         const discountRate = 10;
+//         const cartItems = savedCart.cart.map(item => {
+//             const originalPrice = item.productId.price * item.quantity;
+//             const discount = (originalPrice * discountRate) / 100;
+//             const discountedPrice = originalPrice - discount;
+
+//             return {
+//                 ...item._doc,
+//                 totalPrice: originalPrice,
+//                 discount: discountedPrice,
+//             };
+//         });
+        
+//         console.log(cartItems)
+//         res.status(200).json(cartItems);
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({ message: 'Error adding product to cart', error: error.message });
+//     }
+// };
+
+// exports.viewCart = async (req, res) => {
+//     const userId = req.userId;
+
+//     try {
+//         const userCart = await Cart.findOne({ userId }).populate('cart.productId');
+
+//         if (!userCart) return res.status(404).json({ message: 'Cart not found' });
+
+//         const discountRate = 10;
+//         const cartItems = userCart.cart.map(item => {
+//             const originalPrice = item.productId.price * item.quantity;
+//             const discount = (originalPrice * discountRate) / 100;
+//             const discountedPrice = originalPrice - discount;
+
+//             return {
+//                 ...item._doc,
+//                 totalPrice: originalPrice,
+//                 discount: discountedPrice,
+//             };
+//         });
+        
+
+//         res.status(200).json(cartItems);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Error fetching cart', error: error.message });
+//     }
+// };
 exports.addToCart = async (req, res) => {
     try {
-        const { productId } = req.body;  // Destructure quantity from the request body
-        const userId = req.userId;
+        const { productId, quantity } = req.body;  // Destructure productId and quantity from the request body
+        const userId = req.userId; // Get the userId from the request
 
-        const product = await Product.findById(productId);
-        
-        if(!productId){
-            return res.status(400).json({ message: 'Product ID is required' });
+        // Validate that quantity is a positive integer
+        if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
+            return res.status(400).json({ message: 'Invalid quantity' });
         }
 
-        const userCart = await Cart.findOne({ userId: userId })
-
-        const productInCart = userCart.cart.find((item) => item.productId.toString() === productId)
-        
-        if(productInCart && product.quantity <= productInCart.quantity){
-            return res.status(400).json({ message: "Quantity is more..."})
+        // Check if the product exists and validate quantity
+        const productQuantity = await getProductQuantity(productId); // Get the available product quantity
+        if (quantity > productQuantity) {
+            return res.status(400).json({ message: `Not enough stock. Available stock: ${productQuantity}` });
         }
 
-        if(productInCart){
-            const index = userCart.cart.indexOf(productInCart);
-            userCart.cart[index].quantity++;
-        }else{
-            userCart.cart.push({ productId: productId, quantity: 1 })
+        // Find the user's cart
+        const userCart = await Cart.findOne({ userId: userId });
+        if (!userCart) {
+            return res.status(404).json({ message: 'Cart not found for user' });
         }
 
-        const savedCart = await (await userCart.save()).populate("cart.productId")
+        // Check if the product is already in the cart
+        const productInCart = userCart.cart.find((item) => item.productId.toString() === productId);
 
-        const discountRate = 10;
-        const cartItems = savedCart.cart.map(item => {
-            const originalPrice = item.productId.price * item.quantity;
-            const discount = (originalPrice * discountRate) / 100;
-            const discountedPrice = originalPrice - discount;
+        if (productInCart) {
+            // If the product is already in the cart, check if the quantity doesn't exceed available stock
+            if (productInCart.quantity + quantity > productQuantity) {
+                return res.status(400).json({ message: "Quantity exceeds available stock" });
+            }
+            // Update the quantity if product is in the cart
+            productInCart.quantity += quantity;
+        } else {
+            // If product is not in cart, add it with specified quantity
+            userCart.cart.push({ productId: productId, quantity });
+        }
 
-            return {
-                ...item._doc,
-                totalPrice: originalPrice,
-                discount: discountedPrice,
-            };
+        // Save the updated cart
+        const savedCart = await userCart.save();
+        await savedCart.populate("cart.productId");
+
+        // Send updated cart details as response
+        res.status(200).json({
+            message: 'Product added to cart successfully',
+            cart: savedCart.cart
         });
-        
-        console.log(cartItems)
-        res.status(200).json(cartItems);
+
     } catch (error) {
         console.error(error);
-        return res.status(500).json({ message: 'Error adding product to cart', error: error.message });
+        res.status(500).json({ message: 'Error adding product to cart', error: error.message });
     }
 };
 
+
+
+// View Cart
 exports.viewCart = async (req, res) => {
     const userId = req.userId;
 
     try {
         const userCart = await Cart.findOne({ userId }).populate('cart.productId');
 
-        if (!userCart) return res.status(404).json({ message: 'Cart not found' });
+        if (!userCart || !userCart.cart.length) {
+            return res.status(404).json({ message: 'Cart is empty' });
+        }
 
-        const discountRate = 10;
-        const cartItems = userCart.cart.map(item => {
-            const originalPrice = item.productId.price * item.quantity;
-            const discount = (originalPrice * discountRate) / 100;
-            const discountedPrice = originalPrice - discount;
+        const formattedCartItems = userCart.cart.map(item => {
+            let discount = 0; // Default discount is 0
+            let finalPrice = item.productId.price; // Default to product's original price
+
+            // Check for a user-specific discount
+            const userDiscount = item.productId.userDiscounts.find(
+                entry => entry.userId.toString() === userId
+            );
+
+            if (userDiscount) {
+                // Apply user-specific discount
+                discount = userDiscount.discount;
+                finalPrice = item.productId.price - (item.productId.price * discount) / 100;
+            } else if (item.productId.discount > 0) {
+                // Apply general discount if no user-specific discount
+                discount = item.productId.discount;
+                finalPrice = item.productId.price - (item.productId.price * discount) / 100;
+            }
+
+            const quantity = item.quantity;
+            const totalPrice = finalPrice * quantity;
+            const totalDiscount = (item.productId.price * quantity - totalPrice).toFixed(2);
 
             return {
-                ...item._doc,
-                totalPrice: originalPrice,
-                discount: discountedPrice,
+                productId: {
+                    discount, // Discount percentage applied
+                    ...item.productId._doc, // Spread all product details
+                },
+                quantity, // Product quantity
+                totalPrice: totalPrice.toFixed(2), // Total price for the quantity
+                discount: totalDiscount, // Total discount amount
             };
         });
-        
 
-        res.status(200).json(cartItems);
+        res.status(200).json(formattedCartItems);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error fetching cart', error: error.message });
     }
 };
-
 
 // Delete a specific product from the cart
 exports.deleteProductFromCart = async (req, res) => {

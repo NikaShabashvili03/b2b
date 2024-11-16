@@ -1,26 +1,32 @@
 const express = require('express');
 const productController = require('../controllers/productController');
+const auth = require("../utils/checkAdmin"); 
+
 const router = express.Router();
-const auth = require("../utils/checkAdmin")
 
-// Route to create a product
 router.post('/', productController.createProduct);
+// Route to get a single product by ID
+router.get('/one', productController.getProductsById);
 
-router.get('/one', productController.getProductsById)
 // Route to get products by category
 router.get('/category', productController.getProductsByCategory);
 
-router.get('/subcategory', productController.getProductsBysubcategory);
-
+// Route to get products by subcategory
+router.post('/subcategory', productController.getProductsBysubcategory); // Assuming you changed it to POST as before
 
 // Get all products
-router.get('/', productController.getAllProducts); // New route to get all products
+router.get('/', productController.getAllProducts);
 
 // Route to delete a product by id
 router.delete('/:id', productController.deleteProduct);
 
+// Route to update a product
 router.patch('/update', productController.updateProduct);
 
-router.post("/applyDisscount", auth.checkAdmin, productController.applyDiscount);
+// route to apply disc on a user (admin only)
+router.post('/Userdiscount', auth.checkAdmin, productController.UserDiscount);
+
+// Route to apply general discount (admin only)
+router.post("/applydiscount", auth.checkAdmin, productController.applyDiscount);
 
 module.exports = router;
