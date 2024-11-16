@@ -1,4 +1,5 @@
 // controllers/cartController.js
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Sale = require('../models/SoldItem');  // Add this line
@@ -105,58 +106,95 @@ const { getProductQuantity } = require('../utils/productUtils');
 //         res.status(500).json({ message: 'Error fetching cart', error: error.message });
 //     }
 // };
+
 exports.addToCart = async (req, res) => {
     try {
-        const { productId, quantity } = req.body;  // Destructure productId and quantity from the request body
-        const userId = req.userId; // Get the userId from the request
+        const { productId, quantity } = req.body; // Quantity can be positive or negative
+        const userId = req.userId;
 
-        // Validate that quantity is a positive integer
-        if (!quantity || quantity <= 0 || !Number.isInteger(quantity)) {
-            return res.status(400).json({ message: 'Invalid quantity' });
+        if (!productId || !Number.isInteger(quantity)) {
+            return res.status(400).json({ message: 'Product ID and quantity are required' });
         }
 
-        // Check if the product exists and validate quantity
-        const productQuantity = await getProductQuantity(productId); // Get the available product quantity
-        if (quantity > productQuantity) {
-            return res.status(400).json({ message: `Not enough stock. Available stock: ${productQuantity}` });
+        if (!mongoose.Types.ObjectId.isValid(productId)) {
+            return res.status(400).json({ message: 'Invalid product ID' });
         }
 
-        // Find the user's cart
-        const userCart = await Cart.findOne({ userId: userId });
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        const maxAvailable = await getProductQuantity(productId);
+
+        let userCart = await Cart.findOne({ userId });
         if (!userCart) {
-            return res.status(404).json({ message: 'Cart not found for user' });
+            // Create a new cart if the user doesn't have one
+            userCart = new Cart({ userId, cart: [] });
         }
 
-        // Check if the product is already in the cart
         const productInCart = userCart.cart.find((item) => item.productId.toString() === productId);
 
-        if (productInCart) {
-            // If the product is already in the cart, check if the quantity doesn't exceed available stock
-            if (productInCart.quantity + quantity > productQuantity) {
-                return res.status(400).json({ message: "Quantity exceeds available stock" });
+        if (quantity > 0) {
+            // Add products to the cart
+            if (productInCart) {
+                const newQuantity = productInCart.quantity + quantity;
+
+                if (newQuantity > maxAvailable) {
+                    return res.status(400).json({ message: `Exceeds available stock. Max available: ${maxAvailable}` });
+                }
+
+                productInCart.quantity = newQuantity;
+            } else {
+                if (quantity > maxAvailable) {
+                    return res.status(400).json({ message: `Exceeds available stock. Max available: ${maxAvailable}` });
+                }
+
+                userCart.cart.push({ productId, quantity });
             }
-            // Update the quantity if product is in the cart
-            productInCart.quantity += quantity;
+        } else if (quantity < 0) {
+            // Subtract products from the cart
+            if (productInCart) {
+                const newQuantity = productInCart.quantity + quantity;
+
+                if (newQuantity < 0) {
+                    return res.status(400).json({ message: 'Quantity cannot be less than 0' });
+                } else if (newQuantity === 0) {
+                    // Remove the product from the cart if quantity reaches 0
+                    userCart.cart = userCart.cart.filter((item) => item.productId.toString() !== productId);
+                } else {
+                    productInCart.quantity = newQuantity;
+                }
+            } else {
+                return res.status(400).json({ message: 'Cannot subtract a product not in the cart' });
+            }
         } else {
-            // If product is not in cart, add it with specified quantity
-            userCart.cart.push({ productId: productId, quantity });
+            return res.status(400).json({ message: 'Quantity cannot be 0' });
         }
 
-        // Save the updated cart
         const savedCart = await userCart.save();
-        await savedCart.populate("cart.productId");
+        await savedCart.populate('cart.productId');
 
-        // Send updated cart details as response
         res.status(200).json({
-            message: 'Product added to cart successfully',
-            cart: savedCart.cart
+            message: 'Cart updated successfully',
+            cart: savedCart.cart.map((item) => ({
+                product: {
+                    id: item.productId._id,
+                    name: item.productId.name,
+                    originalPrice: item.productId.originalPrice,
+                    discountedPrice: item.productId.price,
+                    discount: item.productId.discount,
+                },
+                quantity: item.quantity,
+                totalPrice: (item.quantity * item.productId.price).toFixed(2),
+            })),
         });
-
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error adding product to cart', error: error.message });
+        res.status(500).json({ message: 'Error updating cart', error: error.message });
     }
 };
+
 
 
 
