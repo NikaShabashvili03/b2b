@@ -266,11 +266,12 @@ exports.getProductsByCategory = async (req, res) => {
         const { categoryId, subcategoryId } = req.query;
         const { skip = 0, limit = 50, sort = 'asc' } = req.query;
 
+        console.log(categoryId)
         if (!ObjectId.isValid(categoryId)) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        const userId = req.user.id; // Get user ID from request
+        const userId = req.userId; // Get user ID from request
 
         const products = await Product.find({ category: categoryId, subcategory: subcategoryId })
             .skip(parseInt(skip) * parseInt(limit))
@@ -279,6 +280,7 @@ exports.getProductsByCategory = async (req, res) => {
             .populate('category')
             .populate('subcategory');
 
+        console.log(products)
         const formattedProducts = products.map(product => {
             let discount = 0; // Default discount is 0
             let finalPrice = product.price; // Default to product's original price
