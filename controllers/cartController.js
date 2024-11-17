@@ -69,7 +69,6 @@ exports.addToCart = async (req, res) => {
             };
         });
         
-        console.log(cartItems)
         res.status(200).json(cartItems);
     } catch (error) {
         console.error(error);
@@ -120,6 +119,8 @@ exports.deleteProductFromCart = async (req, res) => {
         
         userCart.cart = userCart.cart.filter(item => item._id !== filteredCart._id);
         await userCart.save();
+
+        console.log(userCart)
 
         res.status(200).json({ message: 'Product removed from cart', cart: filteredCart });
     } catch (error) {
