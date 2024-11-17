@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Category = require('../models/Category'); 
 const Subcategory = require('../models/Subcategory');  
@@ -260,67 +261,68 @@ exports.getProductsById = async (req, res) => {
 //         res.status(500).json({ message: 'Something went wrong while fetching products by category' });
 //     }
 // };
-// Get Products by Category function with original and discounted prices
+
+
 exports.getProductsByCategory = async (req, res) => {
     try {
-        const { categoryId, subcategoryId } = req.query;
-        const { skip = 0, limit = 50, sort = 'asc' } = req.query;
+        const { categoryId, subcategoryId, skip = 0, limit = 50, sort = 'asc' } = req.query;
+        const userId = req.userId;
 
-        console.log(categoryId)
-        if (!ObjectId.isValid(categoryId)) {
+        if (!mongoose.Types.ObjectId.isValid(categoryId)) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        const userId = req.userId; // Get user ID from request
-
-        const products = await Product.find({ category: categoryId, subcategory: subcategoryId })
+        const products = await Product.find({
+            category: categoryId,
+            subcategory: subcategoryId,
+        })
             .skip(parseInt(skip) * parseInt(limit))
             .limit(parseInt(limit))
             .sort({ name: sort })
-            .populate('category')
-            .populate('subcategory');
+            .populate('category', "name")
+            .populate('subcategory', "name");
 
-        console.log(products)
         const formattedProducts = products.map(product => {
-            let discount = 0; // Default discount is 0
-            let finalPrice = product.price; // Default to product's original price
+            const originalPrice = product.price || 0; 
+            let discount = 0; 
+            let finalPrice = originalPrice; 
 
-            // Check for a user-specific discount
-            const userDiscount = product.userDiscounts.find(
-                entry => entry.userId.toString() === userId
-            );
+            const userDiscount = product.userDiscounts?.find(
+                entry => entry.userId?.toString() === userId
+            )?.discount || 0;
 
-            if (userDiscount) {
-                // Apply user-specific discount
-                discount = userDiscount.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
-            } else if (product.discount > 0) {
-                // Apply general discount if no user-specific discount
-                discount = product.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
+            discount = Math.max(userDiscount, product.discount);
+
+            if (discount > 0) {
+                finalPrice = originalPrice - (originalPrice * discount) / 100;
             }
 
-            const quantity = 1; // Example quantity
-            const totalPrice = finalPrice * quantity;
+            const totalDiscount = originalPrice - finalPrice;
 
             return {
-                productId: {
-                    discount, // Discount percentage applied
-                    ...product._doc, // Spread all product details
-                },
-                quantity, // Product quantity
-                totalPrice: totalPrice.toFixed(2), // Total price for the quantity
-                discount: (product.price * quantity - totalPrice).toFixed(2), // Total discount amount
+                _id: product._id, 
+                name: product.name,
+                discount: `${discount}%`, 
+                finalPrice: parseFloat(finalPrice.toFixed(2)), 
+                totalDiscount: parseFloat(totalDiscount.toFixed(2)),
+                category: product.category?.name, 
+                subcategory: product.subcategory?.name, 
+                quantity: product.quantity || 0, 
+                attributes: product.attributes || [], 
             };
         });
 
+        if (formattedProducts.length === 0) {
+            return res.status(404).json({ message: 'No products found for this category or subcategory.' });
+        }
+
         res.status(200).json({
-            product: formattedProducts,
-            pages: Math.ceil(products.length / limit)
+            products: formattedProducts,
+            pages: Math.ceil(products.length / limit),
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Something went wrong while fetching products by category' });
+        res.status(500).json({ message: 'Something went wrong while fetching products by category.' });
     }
 };
 
