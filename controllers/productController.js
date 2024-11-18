@@ -274,40 +274,33 @@ exports.getProductsByCategory = async (req, res) => {
 
         const products = await Product.find({
             category: categoryId,
-            subcategory: subcategoryId,
+            subcategory: subcategoryId,            
         })
             .skip(parseInt(skip) * parseInt(limit))
             .limit(parseInt(limit))
             .sort({ name: sort })
             .populate('category', "name")
             .populate('subcategory', "name");
-
+                console.log(products)
             const formattedProducts = products.map(product => {
                 const originalPrice = product.price || 0;
-
+                        
                 const userDiscount = product.userDiscounts?.find(
                     entry => entry.userId?.toString() === userId
                 )?.discount || 0;
     
                 const globalDiscount = product.discount;
     
-                const discount = globalDiscount > userDiscount ? globalDiscount : 0;
-    
-                // Calculate final price
-                // let finalPrice = originalPrice;
-                // if (discount > 0) {
-                //     finalPrice = originalPrice - (originalPrice * discount) / 100;
-                // }
-    
-                // const totalDiscount = originalPrice - finalPrice;
+                const discount = globalDiscount > userDiscount ? globalDiscount : userDiscount;
+                console.log(discount)
+
                 
                 return {
                     _id: product._id,
                     name: product.name,
                     discount: `${discount}%`, 
                     finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), 
-                    globalDiscount: (parseFloat((originalPrice - (originalPrice - (originalPrice * discount) / 100)).toFixed(2))) > userDiscounts ? globalDiscount:userDiscount, 
-                    userDiscount: (parseFloat(userDiscount.toFixed(2)))>globalDiscount ? userDiscount:globalDiscount, 
+                    oldPrice: product.price,
                     category: product.category?.name, 
                     subcategory: product.subcategory?.name, 
                     quantity: product.quantity || 0, 
@@ -326,99 +319,6 @@ exports.getProductsByCategory = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while fetching products by category.' });
-    }
-};
-
-
-// Get Products by Subcategory function with original and discounted prices
-// exports.getProductsBysubcategory = async (req, res) => {
-//     try {
-//         const { subcategoryId } = req.body;
-//         const { skip = 0, limit = 50 } = req.query; 
-
-//         if (!ObjectId.isValid(subcategoryId)) {
-//             return res.status(400).json({ message: 'Invalid subcategory ID' });
-//         }
-
-//         const products = await Product.find({ subcategory: subcategoryId })
-//             .skip(parseInt(skip) * parseInt(limit)) 
-//             .limit(parseInt(limit)) 
-//             .sort({ name: 'asc' }) 
-//             .populate('subcategory'); 
-
-//         const productsWithPrices = products.map(product => {
-//             const originalPrice = product.price;
-//             const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
-//             const discountedPrice = originalPrice - discountAmount;
-
-//             return {
-//                 ...product._doc,
-//                 originalPrice,
-//                 discountedPrice,
-//             };
-//         });
-
-//         res.status(200).json(productsWithPrices);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Something went wrong' });
-//     }
-// };
-// Get Products by Subcategory function with original and discounted prices
-exports.getProductsBysubcategory = async (req, res) => {
-    try {
-        const { subcategoryId } = req.body;
-        const { skip = 0, limit = 50 } = req.query; 
-
-        if (!ObjectId.isValid(subcategoryId)) {
-            return res.status(400).json({ message: 'Invalid subcategory ID' });
-        }
-
-        const userId = req.user.id; // Get user ID from request
-
-        const products = await Product.find({ subcategory: subcategoryId })
-            .skip(parseInt(skip) * parseInt(limit)) 
-            .limit(parseInt(limit)) 
-            .sort({ name: 'asc' }) 
-            .populate('subcategory'); 
-
-        const formattedProducts = products.map(product => {
-            let discount = 0; // Default discount is 0
-            let finalPrice = product.price; // Default to product's original price
-
-            // Check for a user-specific discount
-            const userDiscount = product.userDiscounts.find(
-                entry => entry.userId.toString() === userId
-            );
-
-            if (userDiscount) {
-                // Apply user-specific discount
-                discount = userDiscount.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
-            } else if (product.discount > 0) {
-                // Apply general discount if no user-specific discount
-                discount = product.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
-            }
-
-            const quantity = 1; // Example quantity
-            const totalPrice = finalPrice * quantity;
-
-            return {
-                productId: {
-                    discount, // Discount percentage applied
-                    ...product._doc, // Spread all product details
-                },
-                quantity, // Product quantity
-                totalPrice: totalPrice.toFixed(2), // Total price for the quantity
-                discount: (product.price * quantity - totalPrice).toFixed(2), // Total discount amount
-            };
-        });
-
-        res.status(200).json(formattedProducts);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Something went wrong' });
     }
 };
 

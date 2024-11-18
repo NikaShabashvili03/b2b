@@ -12,7 +12,6 @@ router.get('/one', productController.getProductsById);
 router.get('/category', productController.getProductsByCategory);
 
 // Route to get products by subcategory
-router.post('/subcategory', productController.getProductsBysubcategory); // Assuming you changed it to POST as before
 
 // Get all products
 router.get('/', productController.getAllProducts);
