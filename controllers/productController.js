@@ -282,34 +282,37 @@ exports.getProductsByCategory = async (req, res) => {
             .populate('category', "name")
             .populate('subcategory', "name");
 
-        const formattedProducts = products.map(product => {
-            const originalPrice = product.price || 0; 
-            let discount = 0; 
-            let finalPrice = originalPrice; 
+            const formattedProducts = products.map(product => {
+                const originalPrice = product.price || 0;
 
-            const userDiscount = product.userDiscounts?.find(
-                entry => entry.userId?.toString() === userId
-            )?.discount || 0;
-
-            discount = Math.max(userDiscount, product.discount);
-
-            if (discount > 0) {
-                finalPrice = originalPrice - (originalPrice * discount) / 100;
-            }
-
-            const totalDiscount = originalPrice - finalPrice;
-
-            return {
-                _id: product._id, 
-                name: product.name,
-                discount: `${discount}%`, 
-                finalPrice: parseFloat(finalPrice.toFixed(2)), 
-                totalDiscount: parseFloat(totalDiscount.toFixed(2)),
-                category: product.category?.name, 
-                subcategory: product.subcategory?.name, 
-                quantity: product.quantity || 0, 
-                attributes: product.attributes || [], 
-            };
+                const userDiscount = product.userDiscounts?.find(
+                    entry => entry.userId?.toString() === userId
+                )?.discount || 0;
+    
+                const globalDiscount = product.discount;
+    
+                const discount = globalDiscount > userDiscount ? globalDiscount : 0;
+    
+                // Calculate final price
+                // let finalPrice = originalPrice;
+                // if (discount > 0) {
+                //     finalPrice = originalPrice - (originalPrice * discount) / 100;
+                // }
+    
+                // const totalDiscount = originalPrice - finalPrice;
+                
+                return {
+                    _id: product._id,
+                    name: product.name,
+                    discount: `${discount}%`, 
+                    finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), 
+                    globalDiscount: (parseFloat((originalPrice - (originalPrice - (originalPrice * discount) / 100)).toFixed(2))) > userDiscounts ? globalDiscount:userDiscount, 
+                    userDiscount: (parseFloat(userDiscount.toFixed(2)))>globalDiscount ? userDiscount:globalDiscount, 
+                    category: product.category?.name, 
+                    subcategory: product.subcategory?.name, 
+                    quantity: product.quantity || 0, 
+                    attributes: product.attributes || [], 
+                };
         });
 
         if (formattedProducts.length === 0) {
