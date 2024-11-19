@@ -324,99 +324,70 @@ exports.getProductsByCategory = async (req, res) => {
 
 
 exports.applyDiscount = async (req, res) => {
-    const { productIds, discountPercentage, userId } = req.body;
+    const { productIds, discountPercentage } = req.body;
 
     try {
-        // Validate that the discount percentage is a number between 0 and 80
-        if (discountPercentage < 0 || discountPercentage > 80) {
-            return res.status(400).json({ message: 'Discount percentage must be between 0 and 80' });
+        // If `discountPercentage` is not provided or explicitly set to null, reset the global discount
+        const resetDiscount = discountPercentage === null;
+
+        if (!resetDiscount) {
+            // Validate the discount percentage if it's provided
+            if (discountPercentage < 0 || discountPercentage > 80) {
+                return res.status(400).json({ message: 'Discount percentage must be between 0 and 80' });
+            }
         }
 
         if (!Array.isArray(productIds) || productIds.length === 0) {
             return res.status(400).json({ message: 'No products provided for discount' });
         }
 
-        // If userId is provided, validate if the user exists and their role
-        if (userId) {
-            // Validate the userId and check if the user exists
-            if (!ObjectId.isValid(userId)) {
-                return res.status(400).json({ message: `Invalid user ID: ${userId}` });
-            }
-
-            const user = await User.findById(userId);
-
-            if (!user) {
-                return res.status(404).json({ message: `User with ID ${userId} not found` });
-            }
-
-            // Only admins can assign discounts to specific users
-            if (user.role !== 'Admin') {
-                return res.status(403).json({ message: 'Only admins can assign discounts to users' });
-            }
-        }
-
         // Process each product ID
-        const updatedProducts = await Promise.all(productIds.map(async (productId) => {
-            if (!ObjectId.isValid(productId)) {
-                throw new Error(`Invalid product ID: ${productId}`);
-            }
-
-            const product = await Product.findById(productId);
-            if (!product) {
-                throw new Error(`Product with ID ${productId} not found`);
-            }
-
-            const originalPrice = product.price; // Keep the original price
-            const discountAmount = (originalPrice * discountPercentage) / 100;
-            const discountedPrice = originalPrice - discountAmount;
-
-            if (userId) {
-                // Assign user-specific discount
-                const existingDiscount = product.userDiscounts.find(
-                    (d) => d.userId.toString() === userId
-                );
-
-                const userPrice = discountedPrice; // Discounted price for the user
-
-                if (existingDiscount) {
-                    existingDiscount.discount = discountPercentage; // Update existing discount
-                    existingDiscount.userPrice = userPrice; // Update user-specific price
-                } else {
-                    product.userDiscounts.push({ userId, discount: discountPercentage, userPrice }); // Add new discount
+        const updatedProducts = await Promise.all(
+            productIds.map(async (productId) => {
+                if (!ObjectId.isValid(productId)) {
+                    throw new Error(`Invalid product ID: ${productId}`);
                 }
-            } else {
-                // Apply global discount
-                product.discount = discountPercentage; // Store the global discount percentage
-                product.price = discountedPrice; // Update the price with the discounted price
-            }
 
-            await product.save();
-            return product;
-        }));
+                const product = await Product.findById(productId);
+                if (!product) {
+                    throw new Error(`Product with ID ${productId} not found`);
+                }
+
+                if (resetDiscount) {
+                    // Reset global discount and restore original price
+                    product.discount = 0;
+                    product.price = product.originalPrice; // Assuming `originalPrice` is stored in the schema
+                } else {
+                    // Apply new global discount
+                    const originalPrice = product.originalPrice || product.price; // Use original price if available
+                    const discountAmount = (originalPrice * discountPercentage) / 100;
+                    const discountedPrice = originalPrice - discountAmount;
+
+                    product.discount = discountPercentage;
+                    product.price = discountedPrice;
+                }
+
+                await product.save();
+                return product;
+            })
+        );
 
         res.status(200).json({
-            message: 'Discount applied successfully to the products',
-            updatedProducts
+            message: resetDiscount ? 'Global discounts have been reset' : 'Global discounts applied successfully',
+            updatedProducts,
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error applying discount', error: error.message });
+        res.status(500).json({ message: 'An error occurred while applying global discounts.' });
     }
 };
+
+
 
 exports.UserDiscount = async (req, res) => {
     const { productIds, discountPercentage, userId } = req.body;
 
     try {
-        // Validate discount percentage
-        if (discountPercentage < 0 || discountPercentage > 80) {
-            return res.status(400).json({ message: 'Discount percentage must be between 0 and 80' });
-        }
-
-        if (!Array.isArray(productIds) || productIds.length === 0) {
-            return res.status(400).json({ message: 'No products provided for discount' });
-        }
-
         // Validate userId
         if (!ObjectId.isValid(userId)) {
             return res.status(400).json({ message: `Invalid user ID: ${userId}` });
@@ -425,6 +396,20 @@ exports.UserDiscount = async (req, res) => {
         const user = await User.findById(userId);
         if (!user) {
             return res.status(404).json({ message: `User with ID ${userId} not found` });
+        }
+
+        // Check if discount should be reset
+        const resetDiscount = discountPercentage === null;
+
+        if (!resetDiscount) {
+            // Validate discount percentage if it's not a reset
+            if (discountPercentage < 0 || discountPercentage > 80) {
+                return res.status(400).json({ message: 'Discount percentage must be between 0 and 80' });
+            }
+        }
+
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ message: 'No products provided for discount' });
         }
 
         // Process all products
@@ -439,26 +424,33 @@ exports.UserDiscount = async (req, res) => {
                     throw new Error(`Product with ID ${productId} not found`);
                 }
 
-                // Calculate the discounted price
-                const discountAmount = (product.originalPrice * discountPercentage) / 100;
-                const userPrice = product.originalPrice - discountAmount;
-
-                // Check if the user already has a discount for this product
-                const existingDiscount = product.userDiscounts.find(
-                    (discount) => discount.userId.toString() === userId
-                );
-
-                if (existingDiscount) {
-                    // Update existing discount and userPrice
-                    existingDiscount.discount = discountPercentage;
-                    existingDiscount.userPrice = userPrice;
+                if (resetDiscount) {
+                    // Remove user-specific discount
+                    product.userDiscounts = product.userDiscounts.filter(
+                        (discount) => discount.userId.toString() !== userId
+                    );
                 } else {
-                    // Add new discount entry for the user
-                    product.userDiscounts.push({ 
-                        userId, 
-                        discount: discountPercentage, 
-                        userPrice 
-                    });
+                    // Apply new discount
+                    const discountAmount = (product.originalPrice * discountPercentage) / 100;
+                    const userPrice = product.originalPrice - discountAmount;
+
+                    // Check if the user already has a discount for this product
+                    const existingDiscount = product.userDiscounts.find(
+                        (discount) => discount.userId.toString() === userId
+                    );
+
+                    if (existingDiscount) {
+                        // Update existing discount and userPrice
+                        existingDiscount.discount = discountPercentage;
+                        existingDiscount.userPrice = userPrice;
+                    } else {
+                        // Add new discount entry for the user
+                        product.userDiscounts.push({ 
+                            userId, 
+                            discount: discountPercentage, 
+                            userPrice 
+                        });
+                    }
                 }
 
                 // Save the updated product with the new or updated userDiscounts
@@ -469,14 +461,17 @@ exports.UserDiscount = async (req, res) => {
         );
 
         res.status(200).json({
-            message: 'Discount applied successfully to the products',
+            message: resetDiscount 
+                ? 'User-specific discounts reset successfully' 
+                : 'Discount applied successfully to the products',
             updatedProducts,
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error applying discount', error: error.message });
+        res.status(500).json({ message: 'Error applying or resetting discount', error: error.message });
     }
 };
+
 
 
 // exports.UserDiscount = async (req, res) => {
