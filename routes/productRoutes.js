@@ -23,7 +23,7 @@ router.delete('/:id', productController.deleteProduct);
 router.patch('/update', productController.updateProduct);
 
 // route to apply disc on a user (admin only)
-router.post('/Userdiscount', auth.checkAdmin, productController.UserDiscount);
+// router.post('/Userdiscount', auth.checkAdmin, productController.UserDiscount);
 
 // Route to apply general discount (admin only)
 router.post("/applydiscount", auth.checkAdmin, productController.applyDiscount);
