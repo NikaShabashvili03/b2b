@@ -5,8 +5,6 @@ const Subcategory = require('../models/Subcategory');
 const User =require('../models/User')
 const validateObjectId = require('../utils/validateObjectId');
 var ObjectId = require('mongoose').Types.ObjectId;
-
-
 // Create Product function
 exports.createProduct = async (req, res) => {
     try {
@@ -36,13 +34,13 @@ exports.createProduct = async (req, res) => {
         const product = new Product({
             name,
             prod_id,
-            price, // Discounted price (initially the same as originalPrice)
-            originalPrice: price, // Store the original price
+            price: parseFloat(price), // Ensure price is stored as a float
+            originalPrice: parseFloat(price),
             description,
             images,
             category: category._id, 
             subcategory: subcategory._id, 
-            quantity,
+            quantity: parseInt(quantity), // Ensure quantity is an integer
             attributes
         });
 
@@ -54,119 +52,49 @@ exports.createProduct = async (req, res) => {
     }
 };
 
-// Get all Products function with original and discounted prices
-// exports.getAllProducts = async (req, res) => {
-//     try {
-//         const { skip = 0, limit = 50, sort = 'asc' } = req.query;
-
-//         const products = await Product.find()
-//             .skip(parseInt(skip) * parseInt(limit))
-//             .limit(parseInt(limit))
-//             .sort({ name: sort })
-//             .populate('category')
-//             .populate('subcategory');
-
-//         // Map products to include original and discounted prices
-//         const productsWithPrices = products.map(product => {
-//             const originalPrice = product.price;
-//             const discountAmount = product.discount
-//                 ? (originalPrice * product.discount) / 100
-//                 : 0;
-//             const discountedPrice = originalPrice - discountAmount;
-
-//             return {
-//                 ...product._doc,         
-//                 originalPrice,           
-//                 discountedPrice,         
-//             };
-//         });
-
-//         res.status(200).json(productsWithPrices);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Something went wrong while fetching products' });
-//     }
-// };
-
 exports.getAllProducts = async (req, res) => {
     try {
-        const userId = req.user.id; // Extract userId from the request (e.g., from a token)
+        const userId = req.userId; // Extract userId from the request (e.g., from a token)
         const products = await Product.find()
             .populate('category')
             .populate('subcategory');
 
-        const formattedProducts = products.map(product => {
-            let discount = 0; // Default discount is 0
-            let finalPrice = product.price; // Default to product's original price
+            const formattedProducts = products.map(product => {
+                const originalPrice = parseFloat(product.price) || 0;
+            
+                const userDiscount = parseFloat(product.userDiscounts?.find(
+                    entry => entry.userId?.toString() === userId
+                )?.discount || 0);
+            
+                const globalDiscount = parseFloat(product.discount || 0);
+            
+                const discount = Math.max(globalDiscount, userDiscount); // Pick the greater discount
+            
+                return {
+                    _id: product._id,
+                    name: product.name,
+                    discount: discount, // Return as an integer
+                    finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), // Final price
+                    oldPrice: parseFloat(product.price), // Original price
+                    category: product.category?.name, // Category name
+                    subcategory: product.subcategory?.name, // Subcategory name
+                    quantity: parseInt(product.quantity || 0), // Product quantity
+                    attributes: product.attributes || [], // Product attributes
+                };
+            });
 
-            // Check for a user-specific discount
-            const userDiscount = product.userDiscounts.find(
-                entry => entry.userId.toString() === userId
-            );
+        if (formattedProducts.length === 0) {
+            return res.status(404).json({ message: 'No products found.' });
+        }
 
-            if (userDiscount) {
-                // Apply user-specific discount
-                discount = userDiscount.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
-            } else if (product.discount > 0) {
-                // Apply general discount if no user-specific discount
-                discount = product.discount;
-                finalPrice = product.price - (product.price * discount) / 100;
-            }
-
-            // Example quantity: Assume 1 for now or modify based on request data
-            const quantity = 1;
-            const totalPrice = finalPrice * quantity;
-
-            // Return the formatted product object
-            return {
-                productId: {
-                    discount, // Discount percentage applied
-                    ...product._doc, // Spread all product details
-                },
-                quantity, // Product quantity
-                totalPrice: totalPrice.toFixed(2), // Total price for the quantity
-                discount: (product.price * quantity - totalPrice).toFixed(2), // Total discount amount
-            };
+        res.status(200).json({
+            products: formattedProducts,
         });
-
-        res.status(200).json(formattedProducts);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Something went wrong while fetching products' });
+        res.status(500).json({ message: 'Something went wrong while fetching products.' });
     }
 };
-
-// Get Product by ID function with original and discounted prices
-// exports.getProductsById = async (req, res) => {
-//     try {
-//         const { productId } = req.query;
-
-//         if (!ObjectId.isValid(productId)) {
-//             return res.status(400).json({ message: 'Invalid product ID' });
-//         }
-
-//         const product = await Product.findById(productId);
-
-//         if (!product) {
-//             return res.status(404).json({ message: 'Product not found' });
-//         }
-
-//         const originalPrice = product.price;
-//         const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
-//         const discountedPrice = originalPrice - discountAmount;
-
-//         res.status(200).json({
-//             ...product._doc,
-//             originalPrice,
-//             discountedPrice,
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Something went wrong' });
-//     }
-// };
-// Get Product by ID function with original and discounted prices
 
 exports.getProductsById = async (req, res) => {
     try {
@@ -186,81 +114,35 @@ exports.getProductsById = async (req, res) => {
             return res.status(404).json({ message: 'Product not found' });
         }
 
-        let discount = 0; // Default discount is 0
-        let finalPrice = product.price; // Default to product's original price
+        const originalPrice = product.price || 0;
 
-        // Check for a user-specific discount
-        const userDiscount = product.userDiscounts.find(
-            entry => entry.userId.toString() === userId
-        );
+        const userDiscount = product.userDiscounts?.find(
+            entry => entry.userId?.toString() === userId
+        )?.discount || 0;
 
-        if (userDiscount) {
-            // Apply user-specific discount
-            discount = userDiscount.discount;
-            finalPrice = product.price - (product.price * discount) / 100;
-        } else if (product.discount > 0) {
-            // Apply general discount if no user-specific discount
-            discount = product.discount;
-            finalPrice = product.price - (product.price * discount) / 100;
-        }
+        const globalDiscount = product.discount;
 
-        const quantity = 1; // Assume quantity 1
-        const totalPrice = finalPrice * quantity;
+        const discount = globalDiscount > userDiscount ? globalDiscount : userDiscount;
 
+        const formattedProduct = {
+            _id: product._id,
+            name: product.name,
+            discount: parseFloat(discount), // Discount as a float
+            finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), // Final price
+            oldPrice: parseFloat(product.price), // Original price
+            category: product.category?.name, 
+            subcategory: product.subcategory?.name,
+            quantity: parseInt(product.quantity || 0),
+            attributes: product.attributes || [],
+        };
         res.status(200).json({
-            productId: {
-                discount, // Discount percentage applied
-                ...product._doc, // Spread all product details
-            },
-            quantity, // Product quantity
-            totalPrice: totalPrice.toFixed(2), // Total price for the quantity
-            discount: (product.price * quantity - totalPrice).toFixed(2), // Total discount amount
+            product: formattedProduct,
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Something went wrong' });
+        res.status(500).json({ message: 'Something went wrong while fetching the product.' });
     }
 };
-
-
-// Get Products by Category function with original and discounted prices
-// exports.getProductsByCategory = async (req, res) => {
-//     try {
-//         const { categoryId, subcategoryId } = req.query;
-//         const { skip = 0, limit = 50, sort = 'asc' } = req.query;
-        
-//         if (!ObjectId.isValid(categoryId)) {
-//             return res.status(400).json({ message: 'Invalid category ID' });
-//         }
-
-//         const products = await Product.find({ category: categoryId, subcategory: subcategoryId })
-//             .skip(parseInt(skip) * parseInt(limit))
-//             .limit(parseInt(limit))
-//             .sort({ name: sort })
-//             .populate('category')
-//             .populate('subcategory');
-
-//         const productsWithPrices = products.map(product => {
-//             const originalPrice = product.price;
-//             const discountAmount = product.discount ? (originalPrice * product.discount) / 100 : 0;
-//             const discountedPrice = originalPrice - discountAmount;
-
-//             return {
-//                 ...product._doc,
-//                 originalPrice,
-//                 discountedPrice,
-//             };
-//         });
-
-//         res.status(200).json({
-//             product: productsWithPrices,
-//             pages: Math.ceil(products.length / limit)
-//         });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Something went wrong while fetching products by category' });
-//     }
-// };
 
 
 exports.getProductsByCategory = async (req, res) => {
@@ -282,31 +164,26 @@ exports.getProductsByCategory = async (req, res) => {
             .populate('category', "name")
             .populate('subcategory', "name");
                 console.log(products)
-            const formattedProducts = products.map(product => {
-                const originalPrice = product.price || 0;
-                        
-                const userDiscount = product.userDiscounts?.find(
-                    entry => entry.userId?.toString() === userId
-                )?.discount || 0;
-    
-                const globalDiscount = product.discount;
-    
-                const discount = globalDiscount > userDiscount ? globalDiscount : userDiscount;
-                console.log(discount)
-
+                const formattedProducts = products.map(product => {
+                    const originalPrice = parseFloat(product.price || 0);
+                    const userDiscount = parseFloat(product.userDiscounts?.find(
+                        entry => entry.userId?.toString() === userId
+                    )?.discount || 0);
+                    const globalDiscount = parseFloat(product.discount || 0);
+                    const discount = Math.max(globalDiscount, userDiscount);
                 
-                return {
-                    _id: product._id,
-                    name: product.name,
-                    discount: `${discount}%`, 
-                    finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), 
-                    oldPrice: product.price,
-                    category: product.category?.name, 
-                    subcategory: product.subcategory?.name, 
-                    quantity: product.quantity || 0, 
-                    attributes: product.attributes || [], 
-                };
-        });
+                    return {
+                        _id: product._id,
+                        name: product.name,
+                        discount: discount, 
+                        finalPrice: parseFloat((originalPrice - (originalPrice * discount) / 100).toFixed(2)), 
+                        oldPrice: parseFloat(product.price), 
+                        category: product.category?.name, 
+                        subcategory: product.subcategory?.name, 
+                        quantity: parseInt(product.quantity || 0),
+                        attributes: product.attributes || [],
+                    };
+                });
 
         if (formattedProducts.length === 0) {
             return res.status(404).json({ message: 'No products found for this category or subcategory.' });
@@ -396,8 +273,8 @@ exports.applyDiscount = async (req, res) => {
                     } else {
                         // Apply global discount
                         const originalPrice = product.originalPrice || product.price;
-                        const discountAmount = (originalPrice * discountRate) / 100;
-                        const discountedPrice = parseFloat((originalPrice - discountAmount).toFixed(2));;
+                        const discountAmount = Math.round((originalPrice * discountRate) / 100);
+                        const discountedPrice = parseFloat((originalPrice - discountAmount).toFixed(2));
 
                         product.discount = discountRate;
                         product.price = discountedPrice ;
@@ -455,11 +332,11 @@ exports.updateProduct = async (req, res) => {
 
         // Update product fields
         product.name = name || product.name;
-        product.price = price || product.price;
+        product.price = price ? parseFloat(price) : product.price;
         product.description = description || product.description;
         product.images = images || product.images;
         product.Category = categoryId || product.Category;
-        product.quantity = quantity || product.quantity;
+        product.quantity = quantity ? parseInt(quantity) : product.quantity;
         product.discount = discount || product.discount;
 
         // Save the updated product
