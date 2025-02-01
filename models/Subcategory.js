@@ -25,10 +25,10 @@ const subcategorySchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
-    description: { type: String },
-
-attributes: [attributeSchema], 
-
+    attributes: [{
+        type: String, // Store attribute names as strings
+        required: true
+    }]
 });
 
 module.exports = mongoose.model('Subcategory', subcategorySchema);

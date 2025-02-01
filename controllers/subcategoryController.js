@@ -5,9 +5,9 @@ const validateObjectId = require('../utils/validateObjectId');
 // Create a new subcategory
 exports.createSubcategory = async (req, res) => {
     try {
-        const { name, description, categoryId } = req.body;
+        const { name, description, categoryId, attributes } = req.body;
 
-        const subcategory = new Subcategory({ name, description, categoryId });
+        const subcategory = new Subcategory({ name, description, categoryId, attributes });
         await subcategory.save();
 
         await Category.findByIdAndUpdate(categoryId, { $push: { subcategory: subcategory._id } });
@@ -38,14 +38,18 @@ exports.getSubcategoriesByCategoryId = async (req, res) => {
 // Update a subcategory
 exports.updateSubcategory = async (req, res) => {
     const { id } = req.params;
-    const { name, description } = req.body;
+    const { name, description, attributes } = req.body;
 
     if (!validateObjectId(id)) {
         return res.status(400).json({ message: 'Invalid Subcategory ID' });
     }
 
     try {
-        const updatedSubcategory = await Subcategory.findByIdAndUpdate(id, { name, description }, { new: true });
+        const updatedSubcategory = await Subcategory.findByIdAndUpdate(
+            id,
+            { name, description, attributes },
+            { new: true }
+        );
         if (!updatedSubcategory) {
             return res.status(404).json({ message: 'Subcategory not found' });
         }
@@ -71,5 +75,39 @@ exports.deleteSubcategory = async (req, res) => {
         res.status(200).json({ message: 'Subcategory deleted' });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting subcategory', error });
+    }
+};
+
+// Add attributes to a subcategory
+exports.addAttributes = async (req, res) => {
+    const { id } = req.params;
+    const { attributes } = req.body;
+
+    if (!validateObjectId(id)) {
+        return res.status(400).json({ message: 'Invalid Subcategory ID' });
+    }
+
+    try {
+        // Find the subcategory
+        const subcategory = await Subcategory.findById(id);
+        if (!subcategory) {
+            return res.status(404).json({ message: 'Subcategory not found' });
+        }
+
+        // Add new attributes if provided
+        if (attributes && Array.isArray(attributes)) {
+            attributes.forEach(attr => {
+                if (!subcategory.attributes.includes(attr)) {
+                    subcategory.attributes.push(attr); // Add new attribute if it doesn't already exist
+                }
+            });
+        }
+
+        // Save the updated subcategory
+        const updatedSubcategory = await subcategory.save();
+
+        res.status(200).json(updatedSubcategory);
+    } catch (error) {
+        res.status(400).json({ message: 'Error adding attributes', error });
     }
 };

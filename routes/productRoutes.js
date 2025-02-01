@@ -1,31 +1,34 @@
 const express = require('express');
 const productController = require('../controllers/productController');
-const auth = require("../utils/checkAdmin"); 
+const subcategoryController = require('../controllers/subcategoryController'); // Import subcategoryController
+const auth = require("../utils/checkAdmin");
 
 const router = express.Router();
 
+// Create a new product
 router.post('/', productController.createProduct);
-// Route to get a single product by ID
-router.get('/one', productController.getProductsById);
 
-// Route to get products by category
-router.get('/category', productController.getProductsByCategory);
+// Get a single product by ID
+router.get('/:id', productController.getProductsById);
 
-// Route to get products by subcategory
+// Get products by category
+router.get('/category/:categoryId', productController.getProductsByCategory);
+
+// Get products by subcategory
+router.get('/subcategory/:subcategoryId', productController.getProductsBySubcategory);
 
 // Get all products
 router.get('/', productController.getAllProducts);
 
-// Route to delete a product by id
+// Delete a product by ID
 router.delete('/:id', productController.deleteProduct);
 
-// Route to update a product
-router.patch('/update', productController.updateProduct);
+// Update a product
+router.patch('/:id', productController.updateProduct);
 
-// route to apply disc on a user (admin only)
-// router.post('/Userdiscount', auth.checkAdmin, productController.UserDiscount);
-
-// Route to apply general discount (admin only)
+// Apply discount (admin only)
 router.post("/applydiscount", auth.checkAdmin, productController.applyDiscount);
 
+// Add attributes to a subcategory (admin only)
+router.patch('/subcategory/:id/attributes', auth.checkAdmin, subcategoryController.addAttributes);
 module.exports = router;
