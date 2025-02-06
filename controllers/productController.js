@@ -3,7 +3,7 @@ const Product = require('../models/Product');
 const Category = require('../models/Category');
 const Subcategory = require('../models/Subcategory');
 const validateObjectId = require('../utils/validateObjectId');
-
+const User = require('../models/User');
 // Create a new product
 exports.createProduct = async (req, res) => {
     try {
@@ -271,7 +271,6 @@ exports.updateProduct = async (req, res) => {
 
             product.attributes = attributes;
         }
-
         // Save the updated product
         await product.save();
 
@@ -347,8 +346,14 @@ exports.applyDiscount = async (req, res) => {
                     }
                 } else {
                     if (userId) {
-                        const discountAmount = (product.originalPrice * discountRate) / 100;
-                        const userPrice = parseFloat((product.originalPrice - discountAmount).toFixed(2));
+                        // Ensure originalPrice is defined
+                        const originalPrice = product.originalPrice || product.price;
+                        if (isNaN(originalPrice)) {
+                            throw new Error(`Invalid originalPrice for product ${productId}`);
+                        }
+
+                        const discountAmount = (originalPrice * discountRate) / 100;
+                        const userPrice = parseFloat((originalPrice - discountAmount).toFixed(2));
 
                         const existingDiscount = product.userDiscounts.find(
                             (discount) => discount.userId.toString() === userId
@@ -365,7 +370,12 @@ exports.applyDiscount = async (req, res) => {
                             });
                         }
                     } else {
+                        // Ensure originalPrice is defined
                         const originalPrice = product.originalPrice || product.price;
+                        if (isNaN(originalPrice)) {
+                            throw new Error(`Invalid originalPrice for product ${productId}`);
+                        }
+
                         const discountAmount = Math.round((originalPrice * discountRate) / 100);
                         const discountedPrice = parseFloat((originalPrice - discountAmount).toFixed(2));
 
