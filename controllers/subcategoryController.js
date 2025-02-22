@@ -3,6 +3,19 @@ const Category = require('../models/Category');
 const Product = require('../models/Product');
 const validateObjectId = require('../utils/validateObjectId');
 
+exports.getAttributes = async (req, res) => {
+    const { subcategoryId } = req.params;
+    try {
+        const subcategory = await Subcategory
+            .findById(subcategoryId)
+            .select('attributes')
+            .populate('attributes', 'name');
+        
+        res.json(subcategory.attributes)
+    } catch (error) {
+        res.status(500).json({ message: 'Something went wrong', error: error.message });
+    }
+}
 // Create a new subcategory
 exports.createSubcategory = async (req, res) => {
     try {
@@ -24,7 +37,7 @@ exports.createSubcategory = async (req, res) => {
 
         res.status(201).json({
             message: 'Subcategory created successfully',
-            subcategory
+            subcategory: subcategory
         });
     } catch (error) {
         res.status(500).json({ message: 'Subcategory creation failed', error: error.message });
@@ -54,7 +67,7 @@ exports.getSubcategoriesByCategoryId = async (req, res) => {
             attributes: subcat.attributes
         }));
 
-        res.status(200).json(formattedSubcategories);
+        res.status(200).json({ subcategory: formattedSubcategories});
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving subcategories', error: error.message });
     }
@@ -99,7 +112,7 @@ exports.deleteSubcategory = async (req, res) => {
         if (!deletedSubcategory) {
             return res.status(404).json({ message: 'Subcategory not found' });
         }
-        res.status(200).json(deletedSubcategory);
+        res.status(200).json({ message: 'Subcategory deleted successfully', subcategory: deletedSubcategory });
     } catch (error) {
         res.status(500).json({ message: 'Error deleting subcategory', error: error.message });
     }
@@ -132,7 +145,7 @@ exports.addAttributes = async (req, res) => {
         // Save the updated subcategory
         const updatedSubcategory = await subcategory.save();
 
-        res.status(200).json(updatedSubcategory);
+        res.status(200).json({ message: 'Attributes added successfully', subcategory: updatedSubcategory });
     } catch (error) {
         res.status(400).json({ message: 'Error adding attributes', error });
     }

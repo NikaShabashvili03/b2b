@@ -35,12 +35,12 @@ exports.createProduct = async (req, res) => {
             attr => !subcategoryAttributes.includes(attr)
         );
 
-        if (invalidAttributes.length > 0) {
-            return res.status(400).json({
-                message: 'Invalid attributes provided',
-                invalidAttributes
-            });
-        }
+        // if (invalidAttributes.length > 0) {
+        //     return res.status(400).json({
+        //         message: 'Invalid attributes provided',
+        //         invalidAttributes
+        //     });
+        // }
 
         // Create new product
         const product = new Product({
@@ -222,14 +222,12 @@ exports.getProductsBySubcategory = async (req, res) => {
         }
 
         const products = await Product.find({ subcategory: subcategoryId })
-            .populate('category')
-            .populate('subcategory');
 
         if (products.length === 0) {
             return res.status(404).json({ message: 'No products found for this subcategory.' });
         }
 
-        res.status(200).json({ products });
+        res.status(200).json({ product: products });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while fetching products by subcategory.' });
@@ -278,7 +276,7 @@ exports.updateProduct = async (req, res) => {
         // Save the updated product
         await product.save();
 
-        res.status(200).json({ message: 'Product updated successfully', product });
+        res.status(200).json({ message: 'Product updated successfully', product: product });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while updating the product.' });
@@ -294,7 +292,7 @@ exports.deleteProduct = async (req, res) => {
         if (!deletedProduct) {
             return res.status(404).json({ message: 'Product not found' });
         }
-        res.status(200).json({ message: 'Product deleted successfully' });
+        res.status(200).json({ message: 'Product deleted successfully', product: deletedProduct });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Something went wrong while deleting the product.' });

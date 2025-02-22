@@ -24,7 +24,7 @@ router.get('/', productController.getAllProducts);
 router.delete('/:id', productController.deleteProduct);
 
 // Update a product
-router.patch('/:id', productController.updateProduct);
+router.put('/:id', productController.updateProduct);
 
 // Apply discount (admin only)
 router.post("/applydiscount", auth.checkAdmin, productController.applyDiscount);
