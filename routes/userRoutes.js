@@ -7,5 +7,6 @@ const auth = require('../utils/checkUser');
 router.post('/register', userController.registerUser);
 router.post('/login', userController.loginUser);
 router.get('/profile', auth.checkUser, userController.profile);
+router.get('/all', auth, userController.getAllUsers);
 
 module.exports = router;
