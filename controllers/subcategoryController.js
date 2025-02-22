@@ -54,7 +54,7 @@ exports.getSubcategoriesByCategoryId = async (req, res) => {
             attributes: subcat.attributes
         }));
 
-        res.status(200).json({ subcategories: formattedSubcategories });
+        res.status(200).json(formattedSubcategories);
     } catch (error) {
         res.status(500).json({ message: 'Error retrieving subcategories', error: error.message });
     }

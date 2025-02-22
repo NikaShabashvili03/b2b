@@ -9,7 +9,7 @@ const router = express.Router();
 router.post('/', productController.createProduct);
 
 // Get a single product by ID
-router.get('/:id', productController.getProductsById);
+router.get('/one/:id', productController.getProductsById);
 
 // Get products by category
 router.get('/category/:categoryId', productController.getProductsByCategory);

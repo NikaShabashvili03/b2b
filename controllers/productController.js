@@ -157,16 +157,20 @@ exports.getProductsByCategory = async (req, res) => {
     try {
         const { categoryId } = req.params;
         const { subcategoryId, skip = 0, limit = 50, sort = 'asc' } = req.query;
+        
+        const query = { category: categoryId };
+
+        if (subcategoryId) {
+            query.subcategory = subcategoryId;
+        }
+
         const userId = req.userId;
 
         if (!mongoose.Types.ObjectId.isValid(categoryId)) {
             return res.status(400).json({ message: 'Invalid category ID' });
         }
 
-        const products = await Product.find({
-            category: categoryId,
-            subcategory: subcategoryId,
-        })
+        const products = await Product.find(query)
             .skip(parseInt(skip) * parseInt(limit))
             .limit(parseInt(limit))
             .sort({ name: sort })

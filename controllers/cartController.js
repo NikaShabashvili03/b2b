@@ -152,12 +152,12 @@ exports.deleteProductFromCart = async (req, res) => {
     try {
         const userCart = await Cart.findOne({ userId });
         if (!userCart) {
-            return res.status(404).json({ message: 'Cart not found', cart: [] });
+            return res.status(404).json({ message: 'Cart not found' });
         }
 
         const productInCart = userCart.cart.find((item) => item.productId.toString() === id);
         if (!productInCart) {
-            return res.status(404).json({ message: 'Product not found in cart', cart: [] });
+            return res.status(404).json({ message: 'Product not found in cart' });
         }
 
         userCart.cart = userCart.cart.filter((item) => item.productId.toString() !== id);
@@ -165,13 +165,14 @@ exports.deleteProductFromCart = async (req, res) => {
 
         res.status(200).json({
             message: 'Product removed from cart successfully',
-            cart: userCart.cart,
+            productId: id,
         });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error removing product from cart', error: error.message });
     }
 };
+
 exports.cartSale = async (req, res) => {
     const userId = req.userId;
     const { cartItems } = req.body;  // Expecting an array of { productId, quantity }
