@@ -99,7 +99,7 @@ exports.deleteSubcategory = async (req, res) => {
         if (!deletedSubcategory) {
             return res.status(404).json({ message: 'Subcategory not found' });
         }
-        res.status(200).json({ message: 'Subcategory deleted successfully' });
+        res.status(200).json(deletedSubcategory);
     } catch (error) {
         res.status(500).json({ message: 'Error deleting subcategory', error: error.message });
     }
