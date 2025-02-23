@@ -30,6 +30,22 @@ const invoiceSchema = new mongoose.Schema({
         enum: ['pending', 'paid', 'cancelled'],
         default: 'pending'
     },
+    issueDate: {
+        type: Date,
+        default: Date.now
+    },
+    dueDate: {
+        type: Date,
+        required: true
+    },
+    bank: {
+        type: String,
+        required: true
+    },
+    transferDetails: {
+        type: String,
+        required: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

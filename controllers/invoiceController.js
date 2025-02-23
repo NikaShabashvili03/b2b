@@ -5,7 +5,7 @@ const User = require('../models/User');
 // Create a new invoice
 exports.createInvoice = async (req, res) => {
     try {
-        const { userId, products } = req.body;
+        const { userId, products, dueDate, bank, transferDetails } = req.body;
 
         // Validate user
         const user = await User.findById(userId);
@@ -33,7 +33,10 @@ exports.createInvoice = async (req, res) => {
         const invoice = new Invoice({
             user: user._id,
             products: productDetails,
-            totalAmount
+            totalAmount,
+            dueDate,
+            bank,
+            transferDetails
         });
 
         const savedInvoice = await invoice.save();
@@ -43,7 +46,6 @@ exports.createInvoice = async (req, res) => {
         res.status(500).json({ message: 'Something went wrong', error: error.message });
     }
 };
-
 // Get all invoices
 exports.getAllInvoices = async (req, res) => {
     try {
@@ -101,10 +103,11 @@ exports.deleteInvoice = async (req, res) => {
         res.status(500).json({ message: 'Something went wrong', error: error.message });
     }
 };
+// Update an invoice
 exports.updateInvoice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body;
+        const { status, dueDate, bank, transferDetails } = req.body;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ message: 'Invalid invoice ID' });
@@ -117,6 +120,9 @@ exports.updateInvoice = async (req, res) => {
         }
 
         if (status) invoice.status = status;
+        if (dueDate) invoice.dueDate = dueDate;
+        if (bank) invoice.bank = bank;
+        if (transferDetails) invoice.transferDetails = transferDetails;
 
         const updatedInvoice = await invoice.save();
         res.status(200).json({ message: 'Invoice updated successfully', invoice: updatedInvoice });
