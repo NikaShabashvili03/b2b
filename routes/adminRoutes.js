@@ -5,8 +5,8 @@ const auth= require('../utils/checkAdmin');//ar washalot, mushaobs ragacnairad
 const adminController = require('../controllers/adminController');
 
 // Admin routes
-router.post('/register', adminController.createAdmin);
-router.post('/login', adminController.login);
+router.post('/register',auth.checkAdmin, adminController.createAdmin);
+router.post('/login', auth.checkAdmin, adminController.login);
 router.get('/profile', auth.checkAdmin, adminController.profile);
 
 module.exports = router;

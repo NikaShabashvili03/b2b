@@ -237,7 +237,7 @@ exports.getProductsBySubcategory = async (req, res) => {
 // Update a product
 exports.updateProduct = async (req, res) => {
     const { id } = req.params;
-    const { name, price, description, images, categoryId, quantity, discount, attributes } = req.body;
+    const { name, price, prod_id, description, images, categoryId, subcategoryId, quantity, discount, attributes } = req.body;
 
     try {
         // Find product by ID
@@ -248,31 +248,15 @@ exports.updateProduct = async (req, res) => {
 
         // Update product fields
         if (name) product.name = name;
+        if (prod_id) product.prod_id = prod_id;
         if (price) product.price = parseFloat(price);
         if (description) product.description = description;
         if (images) product.images = images;
         if (categoryId) product.category = categoryId;
+        if(subcategoryId) product.subcategory = subcategoryId;
         if (quantity) product.quantity = parseInt(quantity);
         if (discount) product.discount = discount;
-
-        // Validate and update attributes
-        if (attributes) {
-            const subcategory = await Subcategory.findById(product.subcategory);
-            const subcategoryAttributes = subcategory.attributes;
-
-            const invalidAttributes = Object.keys(attributes).filter(
-                attr => !subcategoryAttributes.includes(attr)
-            );
-
-            if (invalidAttributes.length > 0) {
-                return res.status(400).json({
-                    message: 'Invalid attributes provided',
-                    invalidAttributes
-                });
-            }
-
-            product.attributes = attributes;
-        }
+        if (attributes) product.attributes = attributes;
         // Save the updated product
         await product.save();
 

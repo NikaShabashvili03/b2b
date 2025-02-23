@@ -6,7 +6,7 @@ const auth = require("../utils/checkAdmin");
 const router = express.Router();
 
 // Create a new product
-router.post('/', productController.createProduct);
+router.post('/', auth.checkAdmin, productController.createProduct);
 
 // Get a single product by ID
 router.get('/one/:id', productController.getProductsById);
@@ -21,10 +21,10 @@ router.get('/subcategory/:subcategoryId', productController.getProductsBySubcate
 router.get('/', productController.getAllProducts);
 
 // Delete a product by ID
-router.delete('/:id', productController.deleteProduct);
+router.delete('/:id',auth.checkAdmin, productController.deleteProduct);
 
 // Update a product
-router.put('/:id', productController.updateProduct);
+router.put('/:id',auth.checkAdmin, productController.updateProduct);
 
 // Apply discount (admin only)
 router.post("/applydiscount", auth.checkAdmin, productController.applyDiscount);
